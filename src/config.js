@@ -1,45 +1,125 @@
 // -----------------------------------------------------------------------------
-// Integration configuration.
+// Integration configuration: defaults (they mirror the `default` values of the
+// manifest `config_schema`, see test/manifest.test.js) and normalization, so
+// the rest of the code never deals with strings, blanks or `undefined`.
 //
-// The configuration is filled in by the user in Gladys, from the `config_schema`
-// declared in `gladys-assistant-integration.json`. The SDK fetches it for you
-// (`gladys.getConfig()`) and notifies you of every change through
-// `gladys.onConfigUpdated()`.
-//
-// This module only provides defaults and normalizes the received object, so the
-// rest of the code never has to deal with `undefined`.
+// Up to three OpenSprinkler controllers, each in its own slot (address,
+// password, optional name). The device identity is the controller's MAC
+// address, read from the controller: moving a controller from one slot to
+// another, or changing its address, keeps its device and history.
 // -----------------------------------------------------------------------------
 
-// Defaults: they MUST stay consistent with the `default` values declared in the
-// `config_schema` of the manifest.
+export const LANGUAGES = ['en', 'fr', 'de', 'es'];
+
+export const SLOTS = [1, 2, 3];
+
+// Reading intervals offered in the configuration, in seconds. The controller
+// is a small device (an ESP8266 on the OpenSprinkler 2.3/3.x): every 30 s is
+// the fastest pace worth asking of it.
+export const POLL_INTERVALS = ['30', '60'];
+
+// How long a station runs when its switch is turned on in Gladys, in minutes.
+export const STATION_MINUTES = ['5', '10', '15', '20', '30', '45', '60'];
+
+// Unit of the "flow pulse rate" set in the OpenSprinkler options (the volume
+// of water per flow-sensor pulse): the controller does not know it.
+export const FLOW_UNITS = ['liter', 'gallon'];
+
 export const DEFAULT_CONFIG = {
-  latitude: 48.8566, // Paris
-  longitude: 2.3522,
-  unit: 'celsius', // 'celsius' | 'fahrenheit'
-  // Seconds between two reads of the polled sensors. Gladys polls at most once
-  // a minute: slower intervals are applied by skipping polls (see
-  // createPoller in src/devices/index.js).
-  poll_frequency: 300,
-  // Reserved key (NOT in config_schema): because the manifest declares both
-  // 'local' and 'cloud' in its `transports` field, Gladys shows a standard
-  // "Prefer the local connection" toggle and sends the user's choice here.
-  // Read-only for the integration; defaults to true.
-  GLADYS_PREFER_LOCAL: true,
+  controller_1_url: '',
+  controller_1_password: '',
+  controller_1_name: '',
+  controller_2_url: '',
+  controller_2_password: '',
+  controller_2_name: '',
+  controller_3_url: '',
+  controller_3_password: '',
+  controller_3_name: '',
+  poll_interval: '30',
+  station_minutes: '10',
+  flow_unit: 'liter',
+  language: 'fr',
 };
 
+const MAX_NAME_LENGTH = 40;
+
 /**
- * Merge the user config with the defaults.
- * @param {Record<string, unknown>} raw config returned by the SDK
+ * Parse the address typed by the user into a base URL: a bare host or IP
+ * (`192.0.2.10`, `sprinkler.local:8080`), or the URL copied from the browser
+ * (`http://192.0.2.10/`). HTTP by default, the path dropped.
+ * @param {unknown} raw
+ * @returns {string|null} `http(s)://host[:port]`, null when unusable
+ */
+export function parseControllerUrl(raw) {
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const text = raw.trim();
+  if (!text) {
+    return null;
+  }
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `http://${text}`;
+  let url;
+  try {
+    url = new URL(withScheme);
+  } catch {
+    return null;
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) {
+    return null;
+  }
+  // Credentials in the address would end up in the logs and the device params.
+  if (url.username || url.password) {
+    return null;
+  }
+  return url.origin;
+}
+
+/** Host part shown to the user (no scheme). */
+export const hostOf = (url) => url.replace(/^https?:\/\//, '');
+
+/**
+ * @param {Record<string, unknown>} raw the configuration returned by the SDK
  */
 export function normalizeConfig(raw = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const text = (key) => (typeof source[key] === 'string' ? source[key].trim() : '');
+  const pick = (key, list) => {
+    const value = source[key] === undefined || source[key] === null ? '' : String(source[key]);
+    return list.includes(value) ? value : DEFAULT_CONFIG[key];
+  };
+
+  const controllers = [];
+  const invalidSlots = [];
+  for (const slot of SLOTS) {
+    const typed = text(`controller_${slot}_url`);
+    if (!typed) {
+      continue;
+    }
+    const url = parseControllerUrl(typed);
+    if (!url) {
+      invalidSlots.push(slot);
+      continue;
+    }
+    controllers.push({
+      slot,
+      url,
+      // Passwords are kept as typed: spaces may be part of them. An empty
+      // password stays empty: the controller may run with "ignore password".
+      password:
+        typeof source[`controller_${slot}_password`] === 'string'
+          ? source[`controller_${slot}_password`]
+          : '',
+      name: text(`controller_${slot}_name`).slice(0, MAX_NAME_LENGTH) || null,
+    });
+  }
+
   return {
-    ...DEFAULT_CONFIG,
-    ...raw,
-    // Force the types: config may arrive as strings from a form.
-    latitude: Number(raw.latitude ?? DEFAULT_CONFIG.latitude),
-    longitude: Number(raw.longitude ?? DEFAULT_CONFIG.longitude),
-    poll_frequency: Number(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
-    // The preference is a boolean; anything but an explicit false means true.
-    GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
+    controllers,
+    invalidSlots,
+    pollIntervalMs: Number(pick('poll_interval', POLL_INTERVALS)) * 1000,
+    stationMinutes: Number(pick('station_minutes', STATION_MINUTES)),
+    flowUnit: pick('flow_unit', FLOW_UNITS),
+    language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_CONFIG.language,
   };
 }

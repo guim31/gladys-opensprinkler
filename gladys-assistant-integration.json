@@ -1,177 +1,910 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "OpenSprinkler",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "OpenSprinkler watering: stations, programs, rain delay and sensors, on your local network.",
+    "fr": "Arrosage OpenSprinkler : stations, programmes, délai de pluie et capteurs, en réseau local.",
+    "de": "OpenSprinkler-Bewässerung: Stationen, Programme, Regenpause und Sensoren im lokalen Netz.",
+    "es": "Riego OpenSprinkler: estaciones, programas, retraso por lluvia y sensores, en red local."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
-  "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "docker_image": "ghcr.io/guim31/gladys-opensprinkler:1.0.0",
+  "gladys_version": ">=5.2.0",
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-opensprinkler/main/cover.png",
+  "categories": ["appliances", "environment"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Your OpenSprinkler",
+        "fr": "Votre OpenSprinkler",
+        "de": "Dein OpenSprinkler",
+        "es": "Su OpenSprinkler"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "OpenSprinkler or OpenSprinkler Pi with firmware 2.x, on your local network. Up to three controllers.",
+        "fr": "OpenSprinkler ou OpenSprinkler Pi avec un firmware 2.x, sur votre réseau local. Jusqu'à trois contrôleurs.",
+        "de": "OpenSprinkler oder OpenSprinkler Pi mit Firmware 2.x in deinem lokalen Netzwerk. Bis zu drei Steuerungen.",
+        "es": "OpenSprinkler u OpenSprinkler Pi con firmware 2.x, en su red local. Hasta tres controladores."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://opensprinkler.github.io/OpenSprinkler-Firmware/",
+          "label": {
+            "en": "OpenSprinkler firmware documentation",
+            "fr": "Documentation du firmware OpenSprinkler",
+            "de": "Dokumentation der OpenSprinkler-Firmware",
+            "es": "Documentación del firmware OpenSprinkler"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "controller_1_url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
+      "description": {
+        "en": "IP address or name of the controller, with :port if not 80 (OpenSprinkler Pi: often :8080).",
+        "fr": "Adresse IP ou nom du contrôleur, avec :port s'il n'est pas 80 (OpenSprinkler Pi : souvent :8080).",
+        "de": "IP-Adresse oder Name der Steuerung, mit :Port, falls nicht 80 (OpenSprinkler Pi: oft :8080).",
+        "es": "Dirección IP o nombre del controlador, con :puerto si no es 80 (OpenSprinkler Pi: a menudo :8080)."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
       "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "default": ""
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "controller_1_password",
+      "type": "secret",
+      "label": {
+        "en": "Device password",
+        "fr": "Mot de passe de l'appareil",
+        "de": "Gerätepasswort",
+        "es": "Contraseña del dispositivo"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "description": {
+        "en": "The password of the OpenSprinkler app (factory default: opendoor). Sent to the controller as its MD5 hash.",
+        "fr": "Le mot de passe de l'application OpenSprinkler (par défaut : opendoor). Envoyé au contrôleur sous forme de hachage MD5.",
+        "de": "Das Passwort der OpenSprinkler-App (Werkseinstellung: opendoor). Wird als MD5-Hash an die Steuerung gesendet.",
+        "es": "La contraseña de la aplicación OpenSprinkler (por defecto: opendoor). Se envía al controlador como hash MD5."
+      },
+      "required": false
     },
     {
-      "key": "unit",
-      "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
+      "key": "controller_1_name",
+      "type": "string",
+      "label": {
+        "en": "Name",
+        "fr": "Nom",
+        "de": "Name",
+        "es": "Nombre"
+      },
+      "description": {
+        "en": "Name of the device in Gladys. Empty: the device name set on the controller.",
+        "fr": "Nom de l'appareil dans Gladys. Vide : le nom réglé sur le contrôleur.",
+        "de": "Name des Geräts in Gladys. Leer: der auf der Steuerung eingestellte Name.",
+        "es": "Nombre del dispositivo en Gladys. Vacío: el nombre configurado en el controlador."
+      },
+      "placeholder": {
+        "en": "e.g. Garden watering",
+        "fr": "ex. Arrosage jardin",
+        "de": "z. B. Gartenbewässerung",
+        "es": "p. ej. Riego del jardín"
+      },
       "required": false,
-      "default": "celsius",
+      "default": ""
+    },
+    {
+      "key": "controller_2",
+      "type": "section",
+      "label": {
+        "en": "Second OpenSprinkler (optional)",
+        "fr": "Deuxième OpenSprinkler (facultatif)",
+        "de": "Zweiter OpenSprinkler (optional)",
+        "es": "Segundo OpenSprinkler (opcional)"
+      },
+      "description": {
+        "en": "Same fields, for another controller of your network.",
+        "fr": "Les mêmes champs, pour un autre contrôleur de votre réseau.",
+        "de": "Dieselben Felder, für eine weitere Steuerung in deinem Netzwerk.",
+        "es": "Los mismos campos, para otro controlador de su red."
+      }
+    },
+    {
+      "key": "controller_2_url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
+      },
+      "description": {
+        "en": "IP address or name of the controller, with :port if not 80 (OpenSprinkler Pi: often :8080).",
+        "fr": "Adresse IP ou nom du contrôleur, avec :port s'il n'est pas 80 (OpenSprinkler Pi : souvent :8080).",
+        "de": "IP-Adresse oder Name der Steuerung, mit :Port, falls nicht 80 (OpenSprinkler Pi: oft :8080).",
+        "es": "Dirección IP o nombre del controlador, con :puerto si no es 80 (OpenSprinkler Pi: a menudo :8080)."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "controller_2_password",
+      "type": "secret",
+      "label": {
+        "en": "Device password",
+        "fr": "Mot de passe de l'appareil",
+        "de": "Gerätepasswort",
+        "es": "Contraseña del dispositivo"
+      },
+      "description": {
+        "en": "The password of the OpenSprinkler app (factory default: opendoor). Sent to the controller as its MD5 hash.",
+        "fr": "Le mot de passe de l'application OpenSprinkler (par défaut : opendoor). Envoyé au contrôleur sous forme de hachage MD5.",
+        "de": "Das Passwort der OpenSprinkler-App (Werkseinstellung: opendoor). Wird als MD5-Hash an die Steuerung gesendet.",
+        "es": "La contraseña de la aplicación OpenSprinkler (por defecto: opendoor). Se envía al controlador como hash MD5."
+      },
+      "required": false
+    },
+    {
+      "key": "controller_2_name",
+      "type": "string",
+      "label": {
+        "en": "Name",
+        "fr": "Nom",
+        "de": "Name",
+        "es": "Nombre"
+      },
+      "description": {
+        "en": "Name of the device in Gladys. Empty: the device name set on the controller.",
+        "fr": "Nom de l'appareil dans Gladys. Vide : le nom réglé sur le contrôleur.",
+        "de": "Name des Geräts in Gladys. Leer: der auf der Steuerung eingestellte Name.",
+        "es": "Nombre del dispositivo en Gladys. Vacío: el nombre configurado en el controlador."
+      },
+      "placeholder": {
+        "en": "e.g. Garden watering",
+        "fr": "ex. Arrosage jardin",
+        "de": "z. B. Gartenbewässerung",
+        "es": "p. ej. Riego del jardín"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "controller_3",
+      "type": "section",
+      "label": {
+        "en": "Third OpenSprinkler (optional)",
+        "fr": "Troisième OpenSprinkler (facultatif)",
+        "de": "Dritter OpenSprinkler (optional)",
+        "es": "Tercer OpenSprinkler (opcional)"
+      },
+      "description": {
+        "en": "Same fields, for another controller of your network.",
+        "fr": "Les mêmes champs, pour un autre contrôleur de votre réseau.",
+        "de": "Dieselben Felder, für eine weitere Steuerung in deinem Netzwerk.",
+        "es": "Los mismos campos, para otro controlador de su red."
+      }
+    },
+    {
+      "key": "controller_3_url",
+      "type": "string",
+      "label": {
+        "en": "Address",
+        "fr": "Adresse",
+        "de": "Adresse",
+        "es": "Dirección"
+      },
+      "description": {
+        "en": "IP address or name of the controller, with :port if not 80 (OpenSprinkler Pi: often :8080).",
+        "fr": "Adresse IP ou nom du contrôleur, avec :port s'il n'est pas 80 (OpenSprinkler Pi : souvent :8080).",
+        "de": "IP-Adresse oder Name der Steuerung, mit :Port, falls nicht 80 (OpenSprinkler Pi: oft :8080).",
+        "es": "Dirección IP o nombre del controlador, con :puerto si no es 80 (OpenSprinkler Pi: a menudo :8080)."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "controller_3_password",
+      "type": "secret",
+      "label": {
+        "en": "Device password",
+        "fr": "Mot de passe de l'appareil",
+        "de": "Gerätepasswort",
+        "es": "Contraseña del dispositivo"
+      },
+      "description": {
+        "en": "The password of the OpenSprinkler app (factory default: opendoor). Sent to the controller as its MD5 hash.",
+        "fr": "Le mot de passe de l'application OpenSprinkler (par défaut : opendoor). Envoyé au contrôleur sous forme de hachage MD5.",
+        "de": "Das Passwort der OpenSprinkler-App (Werkseinstellung: opendoor). Wird als MD5-Hash an die Steuerung gesendet.",
+        "es": "La contraseña de la aplicación OpenSprinkler (por defecto: opendoor). Se envía al controlador como hash MD5."
+      },
+      "required": false
+    },
+    {
+      "key": "controller_3_name",
+      "type": "string",
+      "label": {
+        "en": "Name",
+        "fr": "Nom",
+        "de": "Name",
+        "es": "Nombre"
+      },
+      "description": {
+        "en": "Name of the device in Gladys. Empty: the device name set on the controller.",
+        "fr": "Nom de l'appareil dans Gladys. Vide : le nom réglé sur le contrôleur.",
+        "de": "Name des Geräts in Gladys. Leer: der auf der Steuerung eingestellte Name.",
+        "es": "Nombre del dispositivo en Gladys. Vacío: el nombre configurado en el controlador."
+      },
+      "placeholder": {
+        "en": "e.g. Garden watering",
+        "fr": "ex. Arrosage jardin",
+        "de": "z. B. Gartenbewässerung",
+        "es": "p. ej. Riego del jardín"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "options",
+      "type": "section",
+      "label": {
+        "en": "Options",
+        "fr": "Options",
+        "de": "Optionen",
+        "es": "Opciones"
+      }
+    },
+    {
+      "key": "poll_interval",
+      "type": "select",
+      "label": {
+        "en": "Refresh interval",
+        "fr": "Intervalle de rafraîchissement",
+        "de": "Aktualisierungsintervall",
+        "es": "Intervalo de actualización"
+      },
+      "description": {
+        "en": "How often the controllers are read. They are read again right after each command.",
+        "fr": "Fréquence de lecture des contrôleurs. Ils sont relus juste après chaque commande.",
+        "de": "Wie oft die Steuerungen gelesen werden. Nach jedem Befehl werden sie sofort neu gelesen.",
+        "es": "Con qué frecuencia se leen los controladores. Se vuelven a leer justo después de cada orden."
+      },
+      "required": false,
+      "default": "30",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "30",
+          "label": {
+            "en": "30 seconds",
+            "fr": "30 secondes",
+            "de": "30 Sekunden",
+            "es": "30 segundos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "1 minute",
+            "fr": "1 minute",
+            "de": "1 Minute",
+            "es": "1 minuto"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "key": "station_minutes",
+      "type": "select",
+      "label": {
+        "en": "Watering time of a station switch",
+        "fr": "Durée d'arrosage d'un interrupteur de station",
+        "de": "Bewässerungsdauer eines Stationsschalters",
+        "es": "Duración de riego de un interruptor de estación"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Turning a station on in Gladys waters it for this long, then the controller stops it.",
+        "fr": "Allumer une station dans Gladys l'arrose pendant cette durée, puis le contrôleur l'arrête.",
+        "de": "Eine Station in Gladys einzuschalten bewässert sie so lange, dann stoppt die Steuerung sie.",
+        "es": "Encender una estación en Gladys la riega durante este tiempo; después el controlador la detiene."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "10",
+      "options": [
+        {
+          "value": "5",
+          "label": {
+            "en": "5 minutes",
+            "fr": "5 minutes",
+            "de": "5 Minuten",
+            "es": "5 minutos"
+          }
+        },
+        {
+          "value": "10",
+          "label": {
+            "en": "10 minutes",
+            "fr": "10 minutes",
+            "de": "10 Minuten",
+            "es": "10 minutos"
+          }
+        },
+        {
+          "value": "15",
+          "label": {
+            "en": "15 minutes",
+            "fr": "15 minutes",
+            "de": "15 Minuten",
+            "es": "15 minutos"
+          }
+        },
+        {
+          "value": "20",
+          "label": {
+            "en": "20 minutes",
+            "fr": "20 minutes",
+            "de": "20 Minuten",
+            "es": "20 minutos"
+          }
+        },
+        {
+          "value": "30",
+          "label": {
+            "en": "30 minutes",
+            "fr": "30 minutes",
+            "de": "30 Minuten",
+            "es": "30 minutos"
+          }
+        },
+        {
+          "value": "45",
+          "label": {
+            "en": "45 minutes",
+            "fr": "45 minutes",
+            "de": "45 Minuten",
+            "es": "45 minutos"
+          }
+        },
+        {
+          "value": "60",
+          "label": {
+            "en": "1 hour",
+            "fr": "1 heure",
+            "de": "1 Stunde",
+            "es": "1 hora"
+          }
+        }
+      ]
+    },
+    {
+      "key": "flow_unit",
+      "type": "select",
+      "label": {
+        "en": "Unit of the flow pulse rate",
+        "fr": "Unité du débit par impulsion",
+        "de": "Einheit der Durchflussimpulsrate",
+        "es": "Unidad del caudal por impulso"
+      },
+      "description": {
+        "en": "Only with a flow sensor: the unit of the volume per pulse set in the OpenSprinkler options.",
+        "fr": "Seulement avec un débitmètre : l'unité du volume par impulsion réglé dans les options d'OpenSprinkler.",
+        "de": "Nur mit Durchflusssensor: die Einheit des Volumens pro Impuls aus den OpenSprinkler-Optionen.",
+        "es": "Solo con caudalímetro: la unidad del volumen por impulso configurado en las opciones de OpenSprinkler."
+      },
+      "required": false,
+      "default": "liter",
+      "options": [
+        {
+          "value": "liter",
+          "label": {
+            "en": "Liters",
+            "fr": "Litres",
+            "de": "Liter",
+            "es": "Litros"
+          }
+        },
+        {
+          "value": "gallon",
+          "label": {
+            "en": "US gallons",
+            "fr": "Gallons US",
+            "de": "US-Gallonen",
+            "es": "Galones EE. UU."
+          }
+        }
+      ]
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the feature names",
+        "fr": "Langue des noms de fonctionnalités",
+        "de": "Sprache der Funktionsnamen",
+        "es": "Idioma de los nombres de funciones"
+      },
+      "description": {
+        "en": "Names given to the features when a device is added, and texts of the scene events.",
+        "fr": "Noms donnés aux fonctionnalités à l'ajout d'un appareil, et textes des événements de scène.",
+        "de": "Namen der Funktionen beim Hinzufügen eines Geräts und Texte der Szenen-Ereignisse.",
+        "es": "Nombres de las funciones al añadir un dispositivo y textos de los eventos de escena."
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
+      "description": {
+        "en": "Reads every controller now and reports what it finds.",
+        "fr": "Lit chaque contrôleur maintenant et indique ce qu'il trouve.",
+        "de": "Liest jede Steuerung sofort und meldet, was sie findet.",
+        "es": "Lee cada controlador ahora e indica lo que encuentra."
+      },
+      "timeout_seconds": 40
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "station_finished",
+      "label": {
+        "en": "OpenSprinkler station finished",
+        "fr": "Station OpenSprinkler terminée",
+        "de": "OpenSprinkler-Station fertig",
+        "es": "Estación OpenSprinkler terminada"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "A station stopped watering, with how long it watered and what started it.",
+        "fr": "Une station a fini d'arroser, avec la durée d'arrosage et ce qui l'avait lancée.",
+        "de": "Eine Station hat die Bewässerung beendet, mit Dauer und Auslöser.",
+        "es": "Una estación ha terminado de regar, con la duración y lo que la inició."
       },
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
+          "label": {
+            "en": "Controller (empty: any)",
+            "fr": "Contrôleur (vide : n'importe lequel)",
+            "de": "Steuerung (leer: beliebig)",
+            "es": "Controlador (vacío: cualquiera)"
+          }
         },
         {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
+          "key": "origin",
+          "type": "select",
+          "label": {
+            "en": "Started by (empty: any)",
+            "fr": "Lancée par (vide : tout)",
+            "de": "Gestartet durch (leer: beliebig)",
+            "es": "Iniciada por (vacío: cualquiera)"
+          },
           "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
+            {
+              "value": "manual",
+              "label": {
+                "en": "Manual run",
+                "fr": "Arrosage manuel",
+                "de": "Manueller Start",
+                "es": "Riego manual"
+              }
+            },
+            {
+              "value": "program",
+              "label": {
+                "en": "A program schedule",
+                "fr": "Le calendrier d'un programme",
+                "de": "Zeitplan eines Programms",
+                "es": "El horario de un programa"
+              }
+            },
+            {
+              "value": "run_once",
+              "label": {
+                "en": "Program started by hand, or run-once",
+                "fr": "Programme lancé à la main, ou unique",
+                "de": "Von Hand gestartetes Programm oder Einmallauf",
+                "es": "Programa iniciado a mano o de una vez"
+              }
+            }
           ]
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "controller",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "Controller name",
+            "fr": "Nom du contrôleur",
+            "de": "Name der Steuerung",
+            "es": "Nombre del controlador"
+          }
+        },
+        {
+          "key": "station",
+          "type": "number",
+          "label": {
+            "en": "Station number",
+            "fr": "Numéro de station",
+            "de": "Stationsnummer",
+            "es": "Número de estación"
+          }
+        },
+        {
+          "key": "station_name",
+          "type": "string",
+          "label": {
+            "en": "Station name",
+            "fr": "Nom de la station",
+            "de": "Name der Station",
+            "es": "Nombre de la estación"
+          }
+        },
+        {
+          "key": "duration_minutes",
+          "type": "number",
+          "label": {
+            "en": "Watering time (minutes)",
+            "fr": "Durée d'arrosage (minutes)",
+            "de": "Bewässerungsdauer (Minuten)",
+            "es": "Duración de riego (minutos)"
+          }
+        },
+        {
+          "key": "origin",
+          "type": "string",
+          "label": {
+            "en": "Started by",
+            "fr": "Lancée par",
+            "de": "Gestartet durch",
+            "es": "Iniciada por"
+          }
+        }
+      ]
+    },
+    {
+      "key": "controller_unreachable",
+      "label": {
+        "en": "OpenSprinkler unreachable",
+        "fr": "OpenSprinkler injoignable",
+        "de": "OpenSprinkler nicht erreichbar",
+        "es": "OpenSprinkler inaccesible"
+      },
+      "description": {
+        "en": "The controller stopped answering on the network (two readings in a row).",
+        "fr": "Le contrôleur ne répond plus sur le réseau (deux lectures de suite).",
+        "de": "Die Steuerung antwortet nicht mehr im Netzwerk (zwei Lesungen hintereinander).",
+        "es": "El controlador ha dejado de responder en la red (dos lecturas seguidas)."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Controller (empty: any)",
+            "fr": "Contrôleur (vide : n'importe lequel)",
+            "de": "Steuerung (leer: beliebig)",
+            "es": "Controlador (vacío: cualquiera)"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "controller",
+          "type": "string",
+          "label": {
+            "en": "Controller name",
+            "fr": "Nom du contrôleur",
+            "de": "Name der Steuerung",
+            "es": "Nombre del controlador"
+          }
+        },
+        {
+          "key": "error",
+          "type": "string",
+          "label": {
+            "en": "Reason",
+            "fr": "Raison",
+            "de": "Grund",
+            "es": "Motivo"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+      "key": "run_station",
+      "label": {
+        "en": "Water an OpenSprinkler station",
+        "fr": "Arroser une station OpenSprinkler",
+        "de": "OpenSprinkler-Station bewässern",
+        "es": "Regar una estación OpenSprinkler"
       },
-      "timeout_seconds": 15,
+      "description": {
+        "en": "Open one station for a number of minutes, queued behind the stations already watering.",
+        "fr": "Ouvre une station pendant un nombre de minutes, à la suite des stations qui arrosent déjà.",
+        "de": "Öffnet eine Station für einige Minuten, nach den Stationen, die schon bewässern.",
+        "es": "Abre una estación durante unos minutos, tras las estaciones que ya están regando."
+      },
+      "timeout_seconds": 20,
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
+          "label": {
+            "en": "Controller",
+            "fr": "Contrôleur",
+            "de": "Steuerung",
+            "es": "Controlador"
+          },
+          "required": true
+        },
+        {
+          "key": "station",
+          "type": "number",
+          "label": {
+            "en": "Station number (1 = first)",
+            "fr": "Numéro de station (1 = la première)",
+            "de": "Stationsnummer (1 = erste)",
+            "es": "Número de estación (1 = la primera)"
+          },
+          "required": true,
+          "default": 1,
+          "min": 1,
+          "max": 200
+        },
+        {
+          "key": "minutes",
+          "type": "number",
+          "label": {
+            "en": "Duration in minutes",
+            "fr": "Durée en minutes",
+            "de": "Dauer in Minuten",
+            "es": "Duración en minutos"
+          },
+          "required": true,
+          "default": 10,
+          "min": 1,
+          "max": 1080
+        }
+      ]
+    },
+    {
+      "key": "stop_watering",
+      "label": {
+        "en": "Stop OpenSprinkler watering",
+        "fr": "Arrêter l'arrosage OpenSprinkler",
+        "de": "OpenSprinkler-Bewässerung stoppen",
+        "es": "Detener el riego OpenSprinkler"
+      },
+      "description": {
+        "en": "Stop every station watering or waiting on the controller.",
+        "fr": "Arrête toutes les stations qui arrosent ou attendent sur le contrôleur.",
+        "de": "Stoppt alle Stationen, die auf der Steuerung bewässern oder warten.",
+        "es": "Detiene todas las estaciones que riegan o esperan en el controlador."
+      },
+      "timeout_seconds": 20,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Controller",
+            "fr": "Contrôleur",
+            "de": "Steuerung",
+            "es": "Controlador"
+          },
           "required": true
         }
-      ],
-      "outputs": [
+      ]
+    },
+    {
+      "key": "run_program",
+      "label": {
+        "en": "Start an OpenSprinkler program",
+        "fr": "Lancer un programme OpenSprinkler",
+        "de": "OpenSprinkler-Programm starten",
+        "es": "Iniciar un programa OpenSprinkler"
+      },
+      "description": {
+        "en": "Start a program now: what is watering stops and the program takes over.",
+        "fr": "Lance un programme maintenant : ce qui arrose s'arrête et le programme prend la suite.",
+        "de": "Startet ein Programm sofort: Was gerade bewässert, stoppt, und das Programm übernimmt.",
+        "es": "Inicia un programa ahora: lo que está regando se detiene y el programa toma el relevo."
+      },
+      "timeout_seconds": 20,
+      "fields": [
         {
-          "key": "signalled",
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Controller",
+            "fr": "Contrôleur",
+            "de": "Steuerung",
+            "es": "Controlador"
+          },
+          "required": true
+        },
+        {
+          "key": "program",
+          "type": "number",
+          "label": {
+            "en": "Program number (1 = first)",
+            "fr": "Numéro de programme (1 = le premier)",
+            "de": "Programmnummer (1 = erstes)",
+            "es": "Número de programa (1 = el primero)"
+          },
+          "required": true,
+          "default": 1,
+          "min": 1,
+          "max": 40
+        },
+        {
+          "key": "use_weather",
           "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "label": {
+            "en": "Apply the watering level",
+            "fr": "Appliquer le niveau d'arrosage",
+            "de": "Bewässerungsstufe anwenden",
+            "es": "Aplicar el nivel de riego"
+          },
+          "required": false,
+          "default": true
+        }
+      ]
+    },
+    {
+      "key": "set_rain_delay",
+      "label": {
+        "en": "Set the OpenSprinkler rain delay",
+        "fr": "Régler le délai de pluie OpenSprinkler",
+        "de": "OpenSprinkler-Regenpause setzen",
+        "es": "Fijar el retraso por lluvia OpenSprinkler"
+      },
+      "description": {
+        "en": "Hold the programs for a number of hours (0 cancels the delay). Manual runs still work.",
+        "fr": "Suspend les programmes pendant un nombre d'heures (0 annule le délai). L'arrosage manuel reste possible.",
+        "de": "Setzt die Programme für einige Stunden aus (0 beendet die Pause). Manuelle Starts gehen weiter.",
+        "es": "Suspende los programas durante unas horas (0 anula el retraso). El riego manual sigue posible."
+      },
+      "timeout_seconds": 20,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Controller",
+            "fr": "Contrôleur",
+            "de": "Steuerung",
+            "es": "Controlador"
+          },
+          "required": true
+        },
+        {
+          "key": "hours",
+          "type": "number",
+          "label": {
+            "en": "Duration in hours (0: cancel)",
+            "fr": "Durée en heures (0 : annuler)",
+            "de": "Dauer in Stunden (0: beenden)",
+            "es": "Duración en horas (0: anular)"
+          },
+          "required": true,
+          "default": 24,
+          "min": 0,
+          "max": 720
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "controller",
+      "label": {
+        "en": "OpenSprinkler",
+        "fr": "OpenSprinkler",
+        "de": "OpenSprinkler",
+        "es": "OpenSprinkler"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "Stations watering and their time left, rain delay, and watering buttons.",
+        "fr": "Stations en arrosage et temps restant, délai de pluie, boutons d'arrosage.",
+        "de": "Bewässernde Stationen und Restzeit, Regenpause und Bewässerungstasten.",
+        "es": "Estaciones regando y tiempo restante, retraso por lluvia y botones de riego."
+      },
+      "icon": "droplet",
+      "action_timeout_seconds": 20,
+      "settings": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Controller (empty: the first)",
+            "fr": "Contrôleur (vide : le premier)",
+            "de": "Steuerung (leer: die erste)",
+            "es": "Controlador (vacío: el primero)"
+          },
+          "required": false
+        }
+      ]
     }
   ]
 }

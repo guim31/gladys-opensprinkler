@@ -1,67 +1,95 @@
-# Template de démonstration
+# OpenSprinkler
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Pilotez votre programmateur d'arrosage **OpenSprinkler** ou **OpenSprinkler Pi** depuis Gladys, en réseau local : voyez quelles stations arrosent et pour combien de temps, arrosez un massif tout de suite, lancez un programme, suspendez le calendrier avec un délai de pluie, lisez les capteurs de pluie, de sol et de débit.
 
-## Ce que vous obtenez
+> **Développée sans le matériel : vos retours sont les bienvenus.** Cette intégration a été écrite d'après la documentation de l'API OpenSprinkler et des réponses enregistrées sur le firmware officiel (version Demo), pas sur un contrôleur physique. Dites ce qui marche et ce qui ne marche pas sur [GitHub](https://github.com/guim31/gladys-opensprinkler/issues).
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Cette intégration n'est pas affiliée à OpenSprinkler ni à OpenThings Inc.
+
+## Prérequis
+
+- Un contrôleur OpenSprinkler (2.x, 3.x, 4.x) ou OpenSprinkler Pi avec un **firmware 2.x** (2.1.9 ou plus récent conseillé, éprouvé sur la 2.2.1(6)).
+- Le contrôleur et Gladys sur le même réseau local. L'intégration parle directement au contrôleur (pas de cloud, pas de compte OpenThings Cloud).
+- Le **mot de passe de l'appareil** : celui que vous tapez dans l'application OpenSprinkler (par défaut : `opendoor`).
+- Gladys **5.2.0** ou plus récent (les boutons du widget ouvrent des formulaires).
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+Dans Gladys, allez dans **Intégrations → OpenSprinkler → Configuration** :
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+- **Adresse** : l'adresse IP ou le nom du contrôleur, par exemple `192.168.1.20`. Ajoutez `:port` si le serveur web n'écoute pas sur le port 80 (un OpenSprinkler Pi écoute souvent sur `:8080`). Donnez au contrôleur une adresse IP fixe dans votre box.
+- **Mot de passe de l'appareil** : le mot de passe de l'application OpenSprinkler. Il est envoyé au contrôleur sous forme de hachage MD5, comme le fait l'application officielle, et n'est jamais écrit dans les journaux.
+- **Nom** (facultatif) : le nom de l'appareil dans Gladys ; vide, c'est le nom réglé sur le contrôleur.
+- Jusqu'à **trois contrôleurs** (deuxième et troisième sections).
+- **Intervalle de rafraîchissement** : 30 secondes ou 1 minute. Le contrôleur est aussi relu juste après chaque commande.
+- **Durée d'arrosage d'un interrupteur de station** : combien de temps une station arrose quand vous allumez son interrupteur dans Gladys (10 minutes par défaut). Le contrôleur l'arrête lui-même à la fin.
+- **Unité du débit par impulsion** : litres ou gallons US, l'unité du volume par impulsion réglé dans les options d'OpenSprinkler (seulement avec un débitmètre).
+- **Langue des noms de fonctionnalités** : les noms donnés aux fonctionnalités à l'ajout de l'appareil, et les textes des événements de scène.
 
-## Actions
+Utilisez ensuite **Tester la connexion** : l'intégration lit chaque contrôleur et indique son firmware, ses stations et ses programmes. Ouvrez enfin l'onglet **Découverte** et ajoutez le contrôleur à Gladys.
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+## Appareils et fonctionnalités
 
-## Scènes
+Un appareil par contrôleur, identifié par son adresse MAC : changer son adresse IP ou sa place dans la configuration garde l'appareil et son historique.
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+| Fonctionnalité                                    | Type               | Rôle                                                                                                                                                                                                                                   |
+| ------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contrôleur activé                                 | interrupteur       | Active ou désactive le fonctionnement du contrôleur (aucun programme ne tourne quand il est désactivé).                                                                                                                                |
+| Un interrupteur par station, au nom de la station | interrupteur       | Allumé pendant que la station arrose. L'allumer arrose la station pendant la durée configurée ; l'éteindre l'arrête.                                                                                                                   |
+| Programme : …                                     | interrupteur       | Allumé tant que le programme est actif. L'éteindre désactive le programme (il ne tourne plus selon son calendrier).                                                                                                                    |
+| Niveau d'arrosage                                 | niveau (%)         | Le pourcentage d'arrosage appliqué aux programmes (0 à 250 %), réglé par l'ajustement météo ou à la main.                                                                                                                              |
+| Délai de pluie                                    | durée (heures)     | Les heures restantes avant que les programmes reprennent, 0 sans délai de pluie.                                                                                                                                                       |
+| Capteur de pluie                                  | détecteur de pluie | Seulement avec un capteur de pluie sur une entrée capteur : 1 quand la pluie est détectée.                                                                                                                                             |
+| Capteur de sol (humide)                           | entrée             | Seulement avec un capteur de sol : 1 quand le sol est humide.                                                                                                                                                                          |
+| Débit d'eau                                       | débit (m³/h)       | Seulement avec un débitmètre : le débit actuel.                                                                                                                                                                                        |
+| Compteur d'eau                                    | volume (litres)    | Seulement avec un débitmètre : l'eau consommée depuis l'ajout de l'appareil. Le contrôleur compte les impulsions depuis sa mise sous tension ; l'intégration les additionne d'un redémarrage à l'autre et garde le total dans `/data`. |
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+Les noms sont figés à l'ajout de l'appareil. Une station renommée, un programme ajouté ou un capteur branché plus tard : l'onglet Découverte propose **Mettre à jour** pour l'appareil.
 
-## Tableau de bord
+Les stations maîtres (pompe, vanne maîtresse) apparaissent comme les autres et montrent quand elles tournent, mais ne se lancent pas seules : le contrôleur les ouvre avec les stations qu'elles desservent.
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+## Widget de tableau de bord
+
+Ajoutez le widget **OpenSprinkler** à un tableau de bord (choisissez le contrôleur dans ses réglages, ou laissez vide pour le premier). Il montre :
+
+- le **Niveau d'arrosage**, le **Délai de pluie** et le **Débit d'eau** (avec un débitmètre) en tuiles ;
+- l'état du contrôleur (Au repos, Arrosage en cours, En pause, Désactivé, délai de pluie), le capteur de pluie quand il détecte la pluie, et chaque station qui arrose avec son temps restant ou qui attend son tour ;
+- quatre boutons : **Arroser…** (choisir une station et une durée), **Programme…** (choisir un programme, avec ou sans le niveau d'arrosage), **Tout arrêter** (demande confirmation) et **Délai de pluie…** (un nombre d'heures), qui devient **Annuler le délai** pendant un délai de pluie.
+
+## Déclencheurs de scène
+
+- **Station OpenSprinkler terminée** : une station a fini d'arroser. Filtres : le contrôleur, et ce qui l'avait lancée (arrosage manuel, calendrier d'un programme, ou programme lancé à la main / programme unique). Variables : le numéro et le nom de la station, la durée d'arrosage en minutes, ce qui l'avait lancée, le nom du contrôleur.
+- **OpenSprinkler injoignable** : le contrôleur ne répond plus sur le réseau (deux lectures de suite). Variables : le nom du contrôleur et la raison.
+
+## Actions de scène
+
+- **Arroser une station OpenSprinkler** : ouvre une station (numéro 1 = la première) pendant un nombre de minutes (1 à 1080), à la suite des stations qui arrosent déjà.
+- **Arrêter l'arrosage OpenSprinkler** : arrête toutes les stations qui arrosent ou attendent.
+- **Lancer un programme OpenSprinkler** : lance un programme maintenant (numéro 1 = le premier), avec ou sans le niveau d'arrosage. Ce qui arrose s'arrête et le programme prend la suite.
+- **Régler le délai de pluie OpenSprinkler** : suspend les programmes pendant un nombre d'heures (0 à 720 ; 0 annule le délai).
+
+## Exemples de scènes
+
+- **La pluie arrive** : quand votre intégration météo lève une alerte de pluie, **Régler le délai de pluie OpenSprinkler** à 24 heures.
+- **Arroser le potager depuis la tablette murale** : le bouton **Arroser…** du widget, ou une scène lancée par un bouton qui exécute **Arroser une station OpenSprinkler** pendant 15 minutes.
+- **Compte rendu d'arrosage** : sur **Station OpenSprinkler terminée**, envoyer un message « {{triggerEvent.data.station_name}} a arrosé {{triggerEvent.data.duration_minutes}} min ».
+- **Les enfants jouent dans le jardin** : quand une présence est détectée dans le jardin, **Arrêter l'arrosage OpenSprinkler**.
+- **Contrôleur hors ligne** : sur **OpenSprinkler injoignable**, envoyer une notification.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« ne répond pas »** : vérifiez l'adresse et le port (ouvrez `http://<adresse>` dans un navigateur : la page OpenSprinkler doit s'afficher). L'intégration tourne dans un conteneur Docker : le contrôleur doit être joignable depuis le serveur Gladys.
+- **« mot de passe refusé »** : retapez le mot de passe de l'application OpenSprinkler (sensible à la casse). Celui d'usine est `opendoor`.
+- **« aucun OpenSprinkler à cette adresse »** : quelque chose répond à cette adresse, mais pas l'API OpenSprinkler (un autre appareil, une page web).
+- **Un interrupteur de station se rééteint tout seul** : le contrôleur a refusé l'arrosage. Une station qui arrose ou attend déjà, une station maître ou un contrôleur désactivé ne se lancent pas ; le message d'erreur dit lequel.
+- **Plus de détails** : réglez la variable d'environnement `LOG_LEVEL` sur `debug` dans les réglages de l'intégration ; les journaux montrent alors chaque lecture. Ils ne contiennent jamais le mot de passe.
+
+## Limites
+
+- **Fréquence de lecture et charge du contrôleur** : le contrôleur (un ESP8266 sur l'OpenSprinkler 2.3 / 3.x) sert une requête à la fois. L'intégration le lit toutes les 30 secondes ou toutes les minutes par une seule requête `/ja` (cinq requêtes sur les firmwares antérieurs à 2.1.6, envoyées l'une après l'autre), plus une lecture après chaque commande. Aucun service cloud n'est utilisé, donc aucun quota ; ne descendez pas sous 30 secondes.
+- Les stations et les programmes sont identifiés par leur **numéro** sur le contrôleur, seul identifiant que donne l'API : supprimer ou réordonner des programmes dans l'application OpenSprinkler décale les interrupteurs de programme (les noms restent ceux de la création jusqu'à **Mettre à jour**).
+- Un programme lancé à la main tourne comme un programme « unique » (run-once) sur le contrôleur : son interrupteur montre seulement s'il est actif, et le déclencheur « station terminée » le signale comme lancé à la main.
+- Le déclencheur **station terminée** lit le dernier arrosage terminé du contrôleur à chaque lecture : quand deux stations finissent entre deux lectures, seule la dernière est signalée.
+- Le compteur d'eau part de 0 à l'ajout de l'appareil, et perd l'eau consommée pendant un arrêt de l'intégration qui couvre un redémarrage du contrôleur.
+- Les capteurs étendus (capteurs analogiques du firmware 2.2.1), les stations spéciales et l'édition des programmes ne sont pas gérés : utilisez l'application OpenSprinkler.
+- L'intégration parle HTTP au contrôleur, comme l'application officielle en réseau local ; le hachage du mot de passe circule en clair sur le réseau local.

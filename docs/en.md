@@ -1,61 +1,95 @@
-# Demo Devices Template
+# OpenSprinkler
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Control your **OpenSprinkler** or **OpenSprinkler Pi** irrigation controller from Gladys, on your local network: see which stations water and for how long, water a bed now, start a program, hold the schedule with a rain delay, read the rain, soil and flow sensors.
 
-## What you get
+> **Developed without the hardware: feedback welcome.** This integration was written against the OpenSprinkler API documentation and answers recorded on the official firmware (Demo build), not on a physical controller. Please report what works and what does not on [GitHub](https://github.com/guim31/gladys-opensprinkler/issues).
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+This integration is not affiliated with OpenSprinkler or OpenThings Inc.
+
+## Requirements
+
+- An OpenSprinkler (2.x, 3.x, 4.x) or OpenSprinkler Pi controller with a **2.x firmware** (2.1.9 or later recommended, tested against 2.2.1(6)).
+- The controller and Gladys on the same local network. The integration talks to the controller directly (no cloud, no OpenThings Cloud account).
+- The **device password** of the controller: the one you type in the OpenSprinkler app (factory default: `opendoor`).
+- Gladys **5.2.0** or later (the widget buttons open forms).
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+In Gladys, go to **Integrations → OpenSprinkler → Configuration**:
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+- **Address**: the IP address or name of the controller, e.g. `192.168.1.20`. Add `:port` if the web server does not listen on port 80 (an OpenSprinkler Pi often listens on `:8080`). Give the controller a fixed IP address in your router.
+- **Device password**: the password of the OpenSprinkler app. It is sent to the controller as its MD5 hash, as the official app does, and never written in the logs.
+- **Name** (optional): the name of the device in Gladys; empty, the device name set on the controller is used.
+- Up to **three controllers** (second and third sections).
+- **Refresh interval**: 30 seconds or 1 minute. The controller is also read right after every command.
+- **Watering time of a station switch**: how long a station waters when you turn its switch on in Gladys (10 minutes by default). The controller stops it by itself at the end.
+- **Unit of the flow pulse rate**: liters or US gallons, the unit of the volume per pulse you set in the OpenSprinkler options (only used with a flow sensor).
+- **Language of the feature names**: the names given to the features when the device is added, and the texts of the scene events.
 
-## Actions
+Then use **Test the connection**: it reads every controller and reports its firmware, its stations and programs. Finally, open the **Discovery** tab and add the controller to Gladys.
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+## Devices and features
 
-## Scenes
+One device per controller, identified by its MAC address: changing its IP address or its slot in the configuration keeps the device and its history.
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+| Feature                                         | Type             | What it does                                                                                                                                                                                                  |
+| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Controller enabled                              | switch           | Enables or disables the controller operation (no program runs while it is off).                                                                                                                               |
+| One switch per station, named after the station | switch           | On while the station waters. Turning it on waters the station for the configured time; turning it off stops it.                                                                                               |
+| Program: …                                      | switch           | On while the program is enabled. Turning it off disables the program (it no longer runs on its schedule).                                                                                                     |
+| Watering level                                  | level (%)        | The watering percentage applied to the programs (0 to 250 %), set by the weather adjustment or by hand.                                                                                                       |
+| Rain delay                                      | duration (hours) | The hours left before the programs run again, 0 without a rain delay.                                                                                                                                         |
+| Rain sensor                                     | rain sensor      | Only with a rain sensor on a sensor input: 1 when rain is detected.                                                                                                                                           |
+| Soil sensor (wet)                               | input            | Only with a soil sensor: 1 when the soil is wet.                                                                                                                                                              |
+| Water flow                                      | flow (m³/h)      | Only with a flow sensor: the current flow.                                                                                                                                                                    |
+| Water meter                                     | volume (liters)  | Only with a flow sensor: the water used since the device was added. The controller counts the pulses since it was powered on; the integration adds them up across its reboots and keeps the total in `/data`. |
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+The names are fixed when the device is added. A station renamed, a program added or a sensor plugged in later: the Discovery tab offers **Update** for the device.
 
-## Dashboard
+Master stations (pump, master valve) appear like the others and show when they run, but they cannot be started alone: the controller opens them with the stations they serve.
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+## Dashboard widget
+
+Add the **OpenSprinkler** widget to a dashboard (choose the controller in its settings, or leave it empty for the first one). It shows:
+
+- the **Watering level**, the **Rain delay** and the **Water flow** (with a flow sensor) as tiles;
+- the controller state (Idle, Watering, Paused, Disabled, rain delay), the rain sensor when it detects rain, and each station watering with its time left or waiting in the queue;
+- four buttons: **Water…** (choose a station and a duration), **Program…** (choose a program, with or without the watering level), **Stop all** (asks for confirmation), and **Rain delay…** (a number of hours), which becomes **Cancel rain delay** while a rain delay runs.
+
+## Scene triggers
+
+- **OpenSprinkler station finished**: a station stopped watering. Filters: the controller, and what started it (a manual run, a program schedule, or a program started by hand / a run-once program). Variables: the station number and name, the watering time in minutes, what started it, the controller name.
+- **OpenSprinkler unreachable**: the controller stopped answering on the network (two readings in a row). Variables: the controller name and the reason.
+
+## Scene actions
+
+- **Water an OpenSprinkler station**: open one station (number 1 = the first) for a number of minutes (1 to 1080), queued behind the stations already watering.
+- **Stop OpenSprinkler watering**: stop every station watering or waiting.
+- **Start an OpenSprinkler program**: start a program now (number 1 = the first), with or without the watering level. What is watering stops and the program takes over.
+- **Set the OpenSprinkler rain delay**: hold the programs for a number of hours (0 to 720; 0 cancels the delay).
+
+## Scene examples
+
+- **Rain on the way**: when your weather integration raises a rain alert, **Set the OpenSprinkler rain delay** to 24 hours.
+- **Water the vegetable garden from the wall tablet**: the **Water…** button of the widget, or a scene started by a button that runs **Water an OpenSprinkler station** for 15 minutes.
+- **Watering report**: on **OpenSprinkler station finished**, send a message "{{triggerEvent.data.station_name}} watered {{triggerEvent.data.duration_minutes}} min".
+- **Kids in the garden**: when a presence is detected in the garden, **Stop OpenSprinkler watering**.
+- **Controller offline**: on **OpenSprinkler unreachable**, send a notification.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"does not answer"**: check the address and the port (open `http://<address>` in a browser: the OpenSprinkler page must show). The integration runs in a Docker container: the controller must be reachable from the Gladys server.
+- **"password refused"**: type the password of the OpenSprinkler app again (case-sensitive). The factory default is `opendoor`.
+- **"no OpenSprinkler at this address"**: something answers at this address, but not the OpenSprinkler API (another device, a web page).
+- **A station switch turns itself back off**: the controller refused the run. A station already watering or waiting, a master station or a disabled controller cannot be started; the error message says which.
+- **More details**: set the `LOG_LEVEL` environment variable to `debug` in the integration settings; the logs then show every reading. They never contain the password.
+
+## Limits
+
+- **Reading frequency and controller load**: the controller (an ESP8266 on the OpenSprinkler 2.3 / 3.x) serves one request at a time. The integration reads it every 30 seconds or every minute with a single `/ja` request (five requests on firmwares older than 2.1.6, sent one after the other), plus one reading after each command. No cloud service is used, so there is no quota; please do not lower the interval below 30 seconds.
+- Stations and programs are identified by their **number** on the controller, the only identifier the API gives: deleting or reordering programs in the OpenSprinkler app shifts the program switches (the names stay those of the creation until **Update**).
+- A program started by hand runs as a "run-once" program on the controller: its switch only shows whether it is enabled, and the "station finished" trigger reports it as started by hand.
+- The **station finished** trigger reads the last completed run of the controller at each reading: when two stations finish between two readings, only the last one is reported.
+- The water meter starts at 0 when the device is added, and misses the water used while the integration is stopped across a controller reboot.
+- Expanded sensors (analog sensors of firmware 2.2.1), special stations and program editing are not handled: use the OpenSprinkler app.
+- The integration talks HTTP to the controller, as the official app does on the local network; the password hash travels unencrypted on the LAN.
