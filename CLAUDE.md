@@ -16,8 +16,8 @@ its only runtime dependency. It started from the official JavaScript template.
 ```bash
 npm install
 npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+node --test test/hub.test.js              # one file
+node --test --test-name-pattern "station" # tests whose name matches
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
 npm run format                            # Prettier, fix in place
@@ -31,16 +31,23 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only (src/app.js does the registering)
+src/app.js                        every SDK handler, registered before connect(), on the hub
+src/hub.js                        one record per controller: own reading timer, states, events, commands
+src/devices.js                    the Gladys device of a controller (feature keys, names) and its states
+src/opensprinkler/client.js       OpenSprinkler HTTP API client (MD5 password, /ja + fallback, one request at a time)
+src/opensprinkler/model.js        /ja answer -> snapshot (pure functions)
+src/opensprinkler/http.js         the only network code (node:http GET), the tests' seam
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    dashboard widget `controller` (content, buttons, forms)
+src/texts.js                      every text sent to Gladys, in en/fr/de/es
+src/store.js, src/issues.js       /data persistence; repeated failures logged once
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
+scripts/probe.mjs                 read-only probe of a real controller (prints nothing sensitive)
+gladys-assistant-integration.json manifest: name, config_schema, actions, triggers, widget, image...
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys (same sections)
+test/                             node --test, against the SDK's fake Gladys and a fake controller
+test/fixtures/opensprinkler/      answers recorded on the firmware 2.2.1(6) itself (see its README)
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
 
@@ -70,8 +77,10 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in four languages (English, French, German,
+  Spanish): action messages, widget texts, feature names, manifest texts, and
+  `docs/en.md`, `docs/fr.md`, `docs/de.md`, `docs/es.md`, kept in sync
+  (`test/i18n.test.js`).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -197,6 +206,46 @@ code de ce dépôt. Compléter ce fichier quand un nouveau piège est découvert
 - Les filtres de scène ne font qu'égalité et appartenance : un seuil reste le travail d'un capteur.
 - **Les clés de widgets, de déclencheurs et d'actions sont figées une fois publiées.**
 - `gladys_version` `>=5.1.0` dès qu'il y a widgets, déclencheurs ou actions de scène.
+
+## OpenSprinkler (propre à ce dépôt)
+
+- **API** : firmware 2.x, tout en `GET`, mot de passe en **MD5 minuscule** dans `pw`. Référence :
+  `docs/docs/2.2.1/221_6_api.md` du dépôt `OpenSprinkler/OpenSprinkler-Firmware` (GPL-3.0 : lire,
+  ne pas recopier). Les erreurs arrivent en HTTP 200 `{"result":code,"item":""}` (2 mot de passe,
+  17 hors limites, 48 interdit) ; **`/jo` répond `{"fwv":221}` seul à un mauvais mot de passe** ;
+  une page inconnue est un 404 en texte brut. `/ja` (tout en un) existe depuis 2.1.6 : repli
+  `/jc /jo /jn /js /jp` sur 404 ou `result` 32.
+- **Le serveur du contrôleur (ESP8266) sert un client à la fois** : jamais de requêtes en
+  parallèle (file dans `OpenSprinklerClient.call`), une seule `/ja` par lecture, 30 s minimum.
+- **On éprouve le vrai firmware sans matériel** : il se compile sous Linux en mode Demo
+  (`make VERSION=DEMO EXTRA_CXXFLAGS=-DHTTP_PORT=18080`, paquet `libmosquitto-dev`). Deux
+  retouches locales, jamais commitées : le serveur écoute en IPv6 seul (passer `etherport.cpp` en
+  `AF_INET` si la machine n'a pas d'IPv6) et le mode Demo accepte tout mot de passe (retirer le
+  `return true` de `process_password` dans `api/http.cpp`). Les fixtures en viennent ; on peut y
+  lancer `scripts/probe.mjs 127.0.0.1:18080` et l'intégration elle-même.
+- **Identité** : la MAC (`settings.mac`), seul identifiant stable. Les stations et programmes n'ont
+  que leur **index** : supprimer un programme décale les suivants (limite documentée). Sans MAC
+  (jamais vu), repli sur `slot<n>`.
+- **Un programme lancé à la main (`/mp`) tourne en pid 254 (« run-once »)**, pas en `index + 1` :
+  impossible de savoir quel programme tourne dans ce cas. Seul un démarrage par le calendrier
+  porte le numéro du programme.
+- **Délai réel d'une commande** : `/cm` met la station en file au tick suivant (~1 s), la maître
+  s'ouvre d'abord, la station un tick après. D'où la relecture à 1,5 s puis une relecture
+  programmée au prochain début ou fin de station annoncé (`scheduleTransition`). Arrêter une
+  station au repos répond 17 (traité comme un succès) ; `/cm` ouvre aussi une station désactivée.
+- `devt` et `rdst` sont des époques **locales** du contrôleur : ne calculer que des écarts entre
+  elles, jamais avec l'horloge du conteneur.
+- **Débit** : `flcrt / flwrt` impulsions par seconde, volume par impulsion `((fpr1 << 8) + fpr0) /
+100` dans l'unité choisie dans l'appli (le contrôleur l'ignore : champ `flow_unit`). `flcto`
+  (impulsions depuis la mise sous tension) repart de 0 au redémarrage : le compteur d'eau cumule
+  dans `/data` et traite une baisse comme un redémarrage.
+- Le SDK n'a pas de `DEVICE_FEATURE_TYPES.RAIN_SENSOR` : `rain-sensor/binary` s'écrit avec
+  `TYPES.SENSOR.BINARY`. Capteur de sol (binaire sur OpenSprinkler) : `input/binary`. Niveau
+  d'arrosage : `level-sensor/liquid-level-percent` (0–250). Débit : `water-valve/flow`, seule unité
+  admise `cubic-meter-per-hour`.
+- **Widget** : le validateur du SDK exige des `label` d'option de formulaire **multilingues** : un
+  nom de station se répète dans les quatre langues.
+- Guard i18n : « Sie enthalten » (ils) est pris pour le vouvoiement ; tourner la phrase autrement.
 
 ## Store
 

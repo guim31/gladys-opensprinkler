@@ -1,0 +1,25 @@
+{
+  "masop": [255],
+  "masop2": [0],
+  "masop3": [0],
+  "masop4": [0],
+  "ignore_rain": [0],
+  "ignore_sn1": [0],
+  "ignore_sn2": [0],
+  "stn_dis": [64],
+  "stn_spe": [0],
+  "stn_bnd": [0],
+  "bmt": 1,
+  "stn_grp": [0, 0, 0, 0, 0, 0, 0, 0],
+  "snames": [
+    "Front lawn",
+    "Back lawn",
+    "Vegetable garden",
+    "Drip hedges",
+    "Roses",
+    "Greenhouse",
+    "Unused",
+    "Master pump"
+  ],
+  "maxlen": 32
+}

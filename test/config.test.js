@@ -1,33 +1,67 @@
+// -----------------------------------------------------------------------------
+// Configuration normalization: what the user types becomes clean values.
+// -----------------------------------------------------------------------------
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeConfig, DEFAULT_CONFIG } from '../src/config.js';
+import { DEFAULT_CONFIG, hostOf, normalizeConfig, parseControllerUrl } from '../src/config.js';
 
-test('normalizeConfig returns the defaults when called with no argument', () => {
-  assert.deepEqual(normalizeConfig(), DEFAULT_CONFIG);
+test('defaults: no controller, 30 s, 10 min, liters, French', () => {
+  assert.deepEqual(normalizeConfig(), {
+    controllers: [],
+    invalidSlots: [],
+    pollIntervalMs: 30_000,
+    stationMinutes: 10,
+    flowUnit: 'liter',
+    language: 'fr',
+  });
+  assert.deepEqual(normalizeConfig(DEFAULT_CONFIG), normalizeConfig({}));
 });
 
-test('normalizeConfig keeps user values over the defaults', () => {
-  const config = normalizeConfig({ latitude: 45.5, longitude: -73.6, unit: 'fahrenheit' });
-  assert.equal(config.latitude, 45.5);
-  assert.equal(config.longitude, -73.6);
-  assert.equal(config.unit, 'fahrenheit');
+test('addresses: a bare IP, a port, the URL copied from the browser', () => {
+  assert.equal(parseControllerUrl('192.0.2.10'), 'http://192.0.2.10');
+  assert.equal(parseControllerUrl(' 192.0.2.10:8080 '), 'http://192.0.2.10:8080');
+  assert.equal(parseControllerUrl('http://sprinkler.local/#/home'), 'http://sprinkler.local');
+  assert.equal(parseControllerUrl('https://192.0.2.10/'), 'https://192.0.2.10');
+  assert.equal(parseControllerUrl('ftp://192.0.2.10'), null);
+  assert.equal(parseControllerUrl('http://admin:secret@192.0.2.10'), null, 'no credentials');
+  assert.equal(parseControllerUrl(''), null);
+  assert.equal(parseControllerUrl(42), null);
+  assert.equal(hostOf('http://192.0.2.10:8080'), '192.0.2.10:8080');
 });
 
-test('normalizeConfig coerces numeric strings coming from a form', () => {
-  const config = normalizeConfig({ latitude: '48.8', longitude: '2.3', poll_frequency: '600' });
-  assert.equal(config.latitude, 48.8);
-  assert.equal(config.longitude, 2.3);
-  assert.equal(config.poll_frequency, 600);
-  assert.equal(typeof config.poll_frequency, 'number');
+test('three slots, the invalid ones reported, passwords kept as typed', () => {
+  const config = normalizeConfig({
+    controller_1_url: '192.0.2.10',
+    controller_1_password: ' with spaces ',
+    controller_1_name: '  Garden  ',
+    controller_2_url: 'not a url at all',
+    controller_3_url: '192.0.2.30',
+    poll_interval: '60',
+    station_minutes: 30,
+    flow_unit: 'gallon',
+    language: 'es',
+  });
+  assert.deepEqual(config.controllers, [
+    { slot: 1, url: 'http://192.0.2.10', password: ' with spaces ', name: 'Garden' },
+    { slot: 3, url: 'http://192.0.2.30', password: '', name: null },
+  ]);
+  assert.deepEqual(config.invalidSlots, [2]);
+  assert.equal(config.pollIntervalMs, 60_000);
+  assert.equal(config.stationMinutes, 30);
+  assert.equal(config.flowUnit, 'gallon');
+  assert.equal(config.language, 'es');
 });
 
-test('normalizeConfig falls back to the default for a missing numeric field', () => {
-  const config = normalizeConfig({ unit: 'celsius' });
-  assert.equal(config.poll_frequency, DEFAULT_CONFIG.poll_frequency);
-});
-
-test('GLADYS_PREFER_LOCAL defaults to true and only an explicit false disables it', () => {
-  assert.equal(normalizeConfig().GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: true }).GLADYS_PREFER_LOCAL, true);
-  assert.equal(normalizeConfig({ GLADYS_PREFER_LOCAL: false }).GLADYS_PREFER_LOCAL, false);
+test('values outside the offered options fall back to the defaults', () => {
+  const config = normalizeConfig({
+    poll_interval: '5',
+    station_minutes: '999',
+    flow_unit: 'barrel',
+    language: 'it',
+  });
+  assert.equal(config.pollIntervalMs, 30_000);
+  assert.equal(config.stationMinutes, 10);
+  assert.equal(config.flowUnit, 'liter');
+  assert.equal(config.language, 'fr');
 });

@@ -30,6 +30,25 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+What the integration handles:
+
+- **Secrets**: the device passwords of the controllers are `secret` fields of
+  the Gladys configuration. The integration reads them from Gladys at
+  startup, keeps them in memory, sends only their MD5 hash, and only to the
+  controller they belong to (the `pw` parameter of the OpenSprinkler API). It
+  never writes the password nor its hash to `/data` nor to the logs; error
+  messages name the API endpoint, never the URL.
+- **Stored in `/data`**: `opensprinkler-state.json`, per configured slot the
+  controller address, its MAC address and its structure (station and program
+  names, sensor types, firmware), and the water meter totals. No password.
+- **Network**: requests go only to the controller addresses typed in the
+  configuration, on the local network, in HTTP (the OpenSprinkler firmware
+  serves no HTTPS; an `https://` address is accepted for a controller behind
+  a proxy, its certificate is verified). The integration opens no port and
+  calls no cloud service. The password hash travels unencrypted on the LAN,
+  as with the official app.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+the OpenSprinkler firmware and apps, and the other devices and services of
+your network.
